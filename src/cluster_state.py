@@ -1,8 +1,8 @@
-# Rename
 from clustering import get_representative_examples
 from agent_actions import rename_cluster, name_cluster
 import numpy as np
 
+# Rename
 def rename_cluster_state(
     llm_service,
     data,
@@ -125,26 +125,4 @@ def split_cluster_state(
     return {
         new_cluster_id_1: result_1,
         new_cluster_id_2: result_2,
-    }
-
-# Move items from one cluster to another
-def move_item_cluster_state(
-    data,
-    target_cluster_id: int,
-    item_id: int,
-) -> dict:
-    if target_cluster_id not in data["cluster_id"].unique():
-        raise KeyError(f"target_cluster_id {target_cluster_id!r} not found in data")
-
-    if item_id not in data["Id"].unique():
-        raise KeyError(f"item_id {item_id!r} not found in data")
-
-    old_cluster_id = data.loc[data["Id"] == item_id, "cluster_id"].iloc[0]
-
-    data.loc[data["Id"] == item_id, "cluster_id"] = target_cluster_id
-
-    return {
-        "item_id": item_id,
-        "old_cluster_id": old_cluster_id,
-        "new_cluster_id": target_cluster_id,
     }

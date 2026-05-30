@@ -16,8 +16,7 @@ console = Console()
 from cluster_state import (
     rename_cluster_state,
     binary_merge_cluster_state,
-    split_cluster_state,
-    move_item_cluster_state,
+    split_cluster_state
 )
 
 def handle_needs_clarification(arguments: dict) -> dict:

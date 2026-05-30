@@ -129,35 +129,6 @@ ACTION_SCHEMAS = {
         }
     },
 
-    "move_item": {
-        "type": "function",
-        "function": {
-            "name": "move_item",
-            "description": (
-                "Move one review/item to another existing cluster. "
-                "Use this only when the user explicitly identifies both the item ID and the target cluster ID."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "item_id": {
-                        "type": "integer",
-                        "description": "ID of the review/item to move."
-                    },
-                    "target_cluster_id": {
-                        "type": "integer",
-                        "description": "ID of the cluster where the item should be moved."
-                    },
-                    "reason": {
-                        "type": "string",
-                        "description": "Detailed explanation of why this item should be moved."
-                    }
-                },
-                "required": ["item_id", "target_cluster_id", "reason"]
-            }
-        }
-    },
-
     "needs_clarification": {
         "type": "function",
         "function": {
