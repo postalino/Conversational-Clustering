@@ -80,39 +80,6 @@ def get_representative_examples(
     return examples_df[["Id", "Text"]].to_dict(orient="records")
 
 
-def calculate_cluster_cohesion(data, cluster_id: int) -> float:
-    cluster_data = data[data["cluster_id"] == cluster_id]
-
-    if len(cluster_data) <= 1:
-        return 0.0
-
-    cluster_embeddings = np.vstack(cluster_data["embedding"].to_numpy())
-    centroid = cluster_embeddings.mean(axis=0)
-    distances = np.linalg.norm(cluster_embeddings - centroid, axis=1)
-
-    return float(distances.mean())
-
-
-def calculate_cluster_silhouette(data, cluster_id: int) -> float:
-    if "cluster_id" not in data.columns:
-        raise ValueError("data must contain a 'cluster_id' column")
-
-    labels = data["cluster_id"].to_numpy()
-
-    if len(set(labels)) < 2:
-        return 0.0
-
-    cluster_mask = data["cluster_id"] == cluster_id
-
-    if cluster_mask.sum() <= 1:
-        return 0.0
-
-    embeddings = np.vstack(data["embedding"].to_numpy())
-    sample_scores = silhouette_samples(embeddings, labels, metric="euclidean")
-
-    return float(sample_scores[cluster_mask].mean())
-
-
 def calculate_all_davies_bouldin(data) -> dict:
     if "cluster_id" not in data.columns:
         raise ValueError("data must contain a 'cluster_id' column")

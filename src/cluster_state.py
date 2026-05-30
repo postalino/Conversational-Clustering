@@ -16,7 +16,7 @@ def rename_cluster_state(
     examples = get_representative_examples(
         data=data,
         cluster_id=cluster_id,
-        example_multiplier=2,
+        samples_per_tercile=2,
     )
 
     result = rename_cluster(
@@ -53,7 +53,7 @@ def binary_merge_cluster_state(
     examples = get_representative_examples(
         data=data,
         cluster_id=new_cluster_id,
-        example_multiplier=2,
+        samples_per_tercile=2,
     )
 
     result = name_cluster(
@@ -100,13 +100,13 @@ def split_cluster_state(
     examples_1 = get_representative_examples(
         data=data,
         cluster_id=new_cluster_id_1,
-        example_multiplier=2,
+        samples_per_tercile=2,
     )
 
     examples_2 = get_representative_examples(
         data=data,
         cluster_id=new_cluster_id_2,
-        example_multiplier=2,
+        samples_per_tercile=2,
     )
 
     result_1 = name_cluster(

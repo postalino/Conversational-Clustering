@@ -188,7 +188,13 @@ class Orchestrator:
 
             info_table.add_row("Description", meta["description"])
             info_table.add_row("Items", str(count))
-            info_table.add_row("Davies-Bouldin", f"{davies_bouldin.get(cluster_id, 'N/A'):.3f}")
+           
+            db_value = davies_bouldin.get(cluster_id)
+
+            if db_value is None:
+                info_table.add_row("Davies-Bouldin", "N/A")
+            else:
+                info_table.add_row("Davies-Bouldin", f"{db_value:.3f}")
 
             examples_table = Table(
                 title="Representative examples",
