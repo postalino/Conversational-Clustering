@@ -238,6 +238,7 @@ class Orchestrator:
             llm_service=self.llm_service,
             user_feedback=user_feedback,
             cluster_metadata=self.cluster_metadata,
+            history=self.history,
         )
 
         action_name = parsed_action.get("tool_name")

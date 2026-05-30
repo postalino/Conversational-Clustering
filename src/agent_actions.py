@@ -55,15 +55,31 @@ def rename_cluster(llm_service, examples: list[dict], old_name: str, reason: str
     return _call_cluster_labeler(llm_service, user_content)
 
 
+def _format_history(history: list[dict]) -> str:
+    lines = []
+    for t in history:
+        args = t["parsed_action"].get("arguments", {})
+        args_str = ", ".join(f"{k}={v!r}" for k, v in args.items())
+        lines.append(
+            f"- Turn {t['turn_id']}: \"{t['user_input']}\" "
+            f"→ {t['action_executed']}({args_str}) "
+            f"[{t['status']}]"
+        )
+    return "\nConversation history:\n" + "\n".join(lines) + "\n"
+
+
 def parse_feedback(
     llm_service,
     user_feedback: str,
     cluster_metadata: dict,
+    history: list[dict] | None = None,
 ) -> dict:
     cluster_summary = "\n".join(
         f"- Cluster {cluster_id}: {meta['name']} | {meta['description']}"
         for cluster_id, meta in cluster_metadata.items()
     )
+
+    history_block = _format_history(history) if history else ""
 
     user_content = f"""
     Available actions:
@@ -71,7 +87,7 @@ def parse_feedback(
 
     Current clusters:
     {cluster_summary}
-
+    {history_block}
     User feedback:
     {user_feedback}
 
