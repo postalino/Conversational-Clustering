@@ -61,12 +61,6 @@ ACTION_REGISTRY = {
         cluster_id=args["cluster_id"],
         llm_service=self.llm_service,
     ),
-
-    "move_item": lambda self, args: move_item_cluster_state(
-        data=self.data,
-        item_id=args["item_id"],
-        target_cluster_id=args["target_cluster_id"],
-    ),
     "needs_clarification": lambda self, args: handle_needs_clarification(args),
     "no_action": lambda self, args: handle_no_action(args),
 }
