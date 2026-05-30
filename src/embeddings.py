@@ -1,24 +1,23 @@
 import os
-from typing import Optional, List
+from pathlib import Path
 
-from ollama import Client
-from openai import OpenAI
-
-from config import load_env
 import numpy as np
 import pandas as pd
-from pathlib import Path
+from ollama import Client
+from openai import OpenAI
 from tqdm import tqdm
+
+from config import load_env
 
 
 class EmbeddingService:
-    """Genera embedding usando Ollama locale o API compatibile OpenAI."""
+    """Generate embeddings using a local Ollama instance or an OpenAI-compatible API."""
 
     def __init__(
         self,
-        model: Optional[str] = None,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        model: str | None = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
     ):
         load_env()
         self.model = model or os.getenv("EMBEDDING_MODEL", "bge-m3")
@@ -30,34 +29,25 @@ class EmbeddingService:
         else:
             self.client = Client(host=self.base_url)
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         if not isinstance(text, str) or not text.strip():
             raise ValueError("`text` must be a non-empty string")
 
         try:
             if self.api_key:
-                response = self.client.embeddings.create(
-                    model=self.model,
-                    input=text,
-                )
+                response = self.client.embeddings.create(model=self.model, input=text)
                 return response.data[0].embedding
 
-            response = self.client.embed(
-                model=self.model,
-                input=text,
-            )
+            response = self.client.embed(model=self.model, input=text)
             return response.embeddings[0]
 
         except Exception as e:
             provider = "OpenAI-compatible API" if self.api_key else "Ollama"
             raise RuntimeError(f"{provider} embedding failed: {e}") from e
 
-    def _embed_batch_openai(self, texts: List[str]) -> List[List[float]]:
-        """Batch embedding solo per client OpenAI-compatible (es. OpenRouter)."""
-        response = self.client.embeddings.create(
-            model=self.model,
-            input=texts,
-        )
+    def _embed_batch_openai(self, texts: list[str]) -> list[list[float]]:
+        """Batch embedding for OpenAI-compatible clients only."""
+        response = self.client.embeddings.create(model=self.model, input=texts)
         return [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
 
     def attach_embeddings_to_dataframe(
@@ -68,7 +58,7 @@ class EmbeddingService:
     ) -> pd.DataFrame:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # --- carica cache ---
+        # Load cache
         if cache_path.exists():
             cache = np.load(cache_path, allow_pickle=True)
             embedding_by_id = {
@@ -78,41 +68,37 @@ class EmbeddingService:
         else:
             embedding_by_id = {}
 
-        # --- righe senza embedding in cache ---
+        # Compute embeddings for rows not in cache
         missing_df = df[df["Id"].apply(lambda i: int(i) not in embedding_by_id)]
 
         if not missing_df.empty:
             if self.api_key:
-                batches = range(0, len(missing_df), batch_size)
-                for start in tqdm(batches, desc="Generating Embeddings", unit="batch"):
+                for start in tqdm(range(0, len(missing_df), batch_size), desc="Generating embeddings", unit="batch"):
                     chunk = missing_df.iloc[start : start + batch_size]
                     ids = chunk["Id"].astype(int).tolist()
-                    texts = chunk["Text"].tolist()
-
-                    embeddings = self._embed_batch_openai(texts)
-
+                    embeddings = self._embed_batch_openai(chunk["Text"].tolist())
                     for review_id, embedding in zip(ids, embeddings):
                         embedding_by_id[review_id] = embedding
             else:
-                for _, row in tqdm(missing_df.iterrows(), total=len(missing_df), desc="Embedding", unit="testo"):
-                    review_id = int(row["Id"])
-                    embedding_by_id[review_id] = self.embed(row["Text"])
+                for _, row in tqdm(missing_df.iterrows(), total=len(missing_df), desc="Generating embeddings", unit="text"):
+                    embedding_by_id[int(row["Id"])] = self.embed(row["Text"])
 
-            # --- aggiorna cache solo se ci sono novità ---
+            # Persist updated cache
             np.savez(
                 cache_path,
                 ids=np.array(list(embedding_by_id.keys())),
                 embeddings=np.array(list(embedding_by_id.values())),
             )
 
-        # --- assegna al df preservando l'ordine originale ---
+        # Attach to dataframe preserving original row order
         df = df.copy()
         tqdm.pandas(desc="Loading embeddings from cache")
         df["embedding"] = df["Id"].progress_apply(lambda i: embedding_by_id[int(i)])
 
         return df
 
+
 if __name__ == "__main__":
     embedding_service = EmbeddingService()
     embedding = embedding_service.embed("Hello, world!")
-    print(f"embedding length: {len(embedding)}")
+    print(f"Embedding length: {len(embedding)}")

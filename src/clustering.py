@@ -2,7 +2,7 @@ import math
 import hdbscan
 import numpy as np
 from sklearn.cluster import KMeans
-from sklearn.metrics import davies_bouldin_score, silhouette_samples
+from sklearn.metrics import davies_bouldin_score
 
 
 def get_hdbscan_params(n_samples: int) -> dict:
@@ -37,10 +37,10 @@ def cluster_with_kmeans(
     random_state: int = 42,
 ) -> np.ndarray:
     if k <= 0:
-        raise ValueError("k deve essere maggiore di 0")
+        raise ValueError("k must be greater than 0")
 
     if k > len(embeddings):
-        raise ValueError("k non può essere maggiore del numero di elementi")
+        raise ValueError("k cannot be greater than the number of samples")
 
     model = KMeans(
         n_clusters=k,
@@ -75,9 +75,7 @@ def get_representative_examples(
         if len(t) > 0
     ])
 
-    examples_df = cluster_data.iloc[selected]
-
-    return examples_df[["Id", "Text"]].to_dict(orient="records")
+    return cluster_data.iloc[selected][["Id", "Text"]].to_dict(orient="records")
 
 
 def calculate_all_davies_bouldin(data) -> dict:
@@ -100,19 +98,16 @@ def calculate_all_davies_bouldin(data) -> dict:
             result[cluster_id] = 0.0
             continue
 
-        cluster_indices = np.where(cluster_mask)[0]
         other_mask = ~cluster_mask
         other_labels = labels[other_mask]
         if len(np.unique(other_labels)) < 1:
             result[cluster_id] = 0.0
             continue
 
-        cluster_embeddings = embeddings[cluster_mask]
-        other_embeddings = embeddings[other_mask]
-        combined_embeddings = np.vstack([cluster_embeddings, other_embeddings])
+        combined_embeddings = np.vstack([embeddings[cluster_mask], embeddings[other_mask]])
         combined_labels = np.concatenate([
-            np.zeros(len(cluster_embeddings), dtype=int),
-            np.ones(len(other_embeddings), dtype=int),
+            np.zeros(cluster_mask.sum(), dtype=int),
+            np.ones(other_mask.sum(), dtype=int),
         ])
 
         try:

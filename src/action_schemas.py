@@ -1,4 +1,6 @@
-# Schemi JSON per le risposte dell'LLM
+import json
+
+# JSON schemas for LLM responses
 SCHEMA_NAME_CLUSTER = {
     "type": "object",
     "properties": {
@@ -6,7 +8,7 @@ SCHEMA_NAME_CLUSTER = {
         "description": {"type": "string"},
         "evidence": {
             "type": "array",
-            "items": {"type": "string"}
+            "items": {"type": "string"},
         },
     },
     "required": ["name", "description", "evidence"],
@@ -18,10 +20,10 @@ SCHEMA_ACTION_CALL = {
         "tool_name": {"type": "string"},
         "arguments": {"type": "object"},
     },
-    "required": ["tool_name", "arguments"]
+    "required": ["tool_name", "arguments"],
 }
 
-# Prompts per il comportamento dell'LLM quando deve svolgere azioni specifiche
+# System prompts for specific LLM tasks
 
 _SYSTEM_PROMPT_NAME_CLUSTER = (
     "You are an analytical assistant specialized in labeling clusters of product reviews. "
@@ -43,9 +45,9 @@ _SYSTEM_PROMPT_ACTION_FEEDBACK = (
     "Return ONLY valid JSON matching the provided output schema."
 )
 
-# Schema delle azioni che l'LLM può scegliere in risposta al feedback dell'utente
+# Action schemas passed to the LLM so it knows which operations are available
 
-ACTION_SCHEMAS = {
+ACTION_SCHEMAS = json.dumps({
     "rename_cluster": {
         "type": "function",
         "function": {
@@ -61,18 +63,17 @@ ACTION_SCHEMAS = {
                 "properties": {
                     "cluster_id": {
                         "type": "integer",
-                        "description": "ID of the cluster to rename."
+                        "description": "ID of the cluster to rename.",
                     },
                     "reason": {
                         "type": "string",
-                        "description": "Detailed explanation of why the cluster label should be renamed or improved."
-                    }
+                        "description": "Detailed explanation of why the cluster label should be renamed or improved.",
+                    },
                 },
-                "required": ["cluster_id", "reason"]
-            }
-        }
+                "required": ["cluster_id", "reason"],
+            },
+        },
     },
-
     "merge_clusters": {
         "type": "function",
         "function": {
@@ -87,22 +88,21 @@ ACTION_SCHEMAS = {
                 "properties": {
                     "cluster_id_1": {
                         "type": "integer",
-                        "description": "ID of the first cluster to merge."
+                        "description": "ID of the first cluster to merge.",
                     },
                     "cluster_id_2": {
                         "type": "integer",
-                        "description": "ID of the second cluster to merge."
+                        "description": "ID of the second cluster to merge.",
                     },
                     "reason": {
                         "type": "string",
-                        "description": "Detailed explanation of why these two clusters should be merged."
-                    }
+                        "description": "Detailed explanation of why these two clusters should be merged.",
+                    },
                 },
-                "required": ["cluster_id_1", "cluster_id_2", "reason"]
-            }
-        }
+                "required": ["cluster_id_1", "cluster_id_2", "reason"],
+            },
+        },
     },
-
     "split_cluster": {
         "type": "function",
         "function": {
@@ -117,18 +117,17 @@ ACTION_SCHEMAS = {
                 "properties": {
                     "cluster_id": {
                         "type": "integer",
-                        "description": "ID of the cluster to split."
+                        "description": "ID of the cluster to split.",
                     },
                     "reason": {
                         "type": "string",
-                        "description": "Detailed explanation of why this cluster should be split."
-                    }
+                        "description": "Detailed explanation of why this cluster should be split.",
+                    },
                 },
-                "required": ["cluster_id", "reason"]
-            }
-        }
+                "required": ["cluster_id", "reason"],
+            },
+        },
     },
-
     "needs_clarification": {
         "type": "function",
         "function": {
@@ -144,18 +143,17 @@ ACTION_SCHEMAS = {
                 "properties": {
                     "question": {
                         "type": "string",
-                        "description": "Clarifying question to ask the user."
+                        "description": "Clarifying question to ask the user.",
                     },
                     "reason": {
                         "type": "string",
-                        "description": "Detailed explanation of which required information is missing."
-                    }
+                        "description": "Detailed explanation of which required information is missing.",
+                    },
                 },
-                "required": ["question", "reason"]
-            }
-        }
+                "required": ["question", "reason"],
+            },
+        },
     },
-
     "no_action": {
         "type": "function",
         "function": {
@@ -171,11 +169,11 @@ ACTION_SCHEMAS = {
                 "properties": {
                     "reason": {
                         "type": "string",
-                        "description": "Detailed explanation of why no available action can satisfy the request."
-                    }
+                        "description": "Detailed explanation of why no available action can satisfy the request.",
+                    },
                 },
-                "required": ["reason"]
-            }
-        }
-    }
-}
+                "required": ["reason"],
+            },
+        },
+    },
+}, indent=2)

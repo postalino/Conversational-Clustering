@@ -38,12 +38,14 @@ ACTION_REGISTRY = {
         cluster_metadata=self.cluster_metadata,
         cluster_id_1=args["cluster_id_1"],
         cluster_id_2=args["cluster_id_2"],
+        reason=args["reason"],
     ),
     "split_cluster": lambda self, args: split_cluster_state(
         data=self.data,
         cluster_metadata=self.cluster_metadata,
         cluster_id=args["cluster_id"],
         llm_service=self.llm_service,
+        reason=args["reason"],
     ),
     "needs_clarification": lambda self, args: {
         "status": "needs_clarification",
