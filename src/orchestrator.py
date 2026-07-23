@@ -82,6 +82,7 @@ class Orchestrator:
         self.cluster_metadata = {}
         self.turn_id = 0
         self.history = []
+        self.current_displayed_state = None
 
     # ------------------------------------------------------------------
     # Pipeline steps
@@ -158,7 +159,7 @@ class Orchestrator:
                 data=self.data,
                 cluster_id=cluster_id,
                 samples_per_tercile=2,
-                seed=42,
+                seed=self.turn_id + 42,
             )
             clusters.append({
                 "cluster_id": int(cluster_id),
@@ -174,11 +175,11 @@ class Orchestrator:
     def show_clusters(self) -> None:
         """Pretty-print the current cluster state to the console."""
         console.rule("[bold blue]Current clusters")
-        state = self.build_displayed_state()
+        self.current_displayed_state = self.build_displayed_state()
+        state = self.current_displayed_state
 
         for cluster in state["clusters"]:
             cluster_id = cluster["cluster_id"]
-            meta = self.cluster_metadata[cluster_id]
 
             header = Text()
             header.append(f"Cluster {cluster_id}", style="bold cyan")
@@ -232,7 +233,11 @@ class Orchestrator:
     # ------------------------------------------------------------------
 
     def apply_feedback(self, user_feedback: str) -> dict:
-        displayed_state = self.build_displayed_state()
+        displayed_state = self.current_displayed_state
+
+        if displayed_state is None:
+            displayed_state = self.build_displayed_state()
+            self.current_displayed_state = displayed_state
 
         parsed_action = parse_feedback(
             llm_service=self.llm_service,
@@ -251,6 +256,7 @@ class Orchestrator:
 
         result = ACTION_REGISTRY[action_name](self, arguments)
         self.save_turn_history(displayed_state, user_feedback, parsed_action, result)
+        self.current_displayed_state = None
         return result
 
     def run(self) -> None:
