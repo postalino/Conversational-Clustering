@@ -54,7 +54,7 @@ def cluster_with_kmeans(
 def get_representative_examples(
     data,
     cluster_id: int,
-    samples_per_tercile: int = 3,
+    samples_per_tercile: int = 5,
     seed: int = 42,
 ) -> list[dict]:
     cluster_data = data[data["cluster_id"] == cluster_id]
