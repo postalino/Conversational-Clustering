@@ -4,4 +4,4 @@
 /.venv_corrupt
 /data
 /Schema.txt
-/src/__pycache__
+/src/__pycache__/*.*
