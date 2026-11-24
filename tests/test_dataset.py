@@ -2,86 +2,56 @@ import sys
 import types
 from pathlib import Path
 
-SRC_DIR = Path(__file__).resolve().parent.parent / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+import pandas as pd
 
 import dataset
 
 
-def _install_fake_kaggle(monkeypatch):
-    instances = []
+def test_download_is_lazy_and_idempotent(tmp_path, monkeypatch):
+    """Kaggle si autentica solo quando serve; un secondo download non riscarica."""
+    calls = []
 
     class FakeKaggleApi:
-        def __init__(self):
-            self.authenticated = False
-            self.download_calls = []
-            instances.append(self)
-
         def authenticate(self):
-            self.authenticated = True
+            calls.append("auth")
 
         def dataset_download_files(self, dataset, path, unzip):
-            self.download_calls.append(
-                {
-                    "dataset": dataset,
-                    "path": path,
-                    "unzip": unzip,
-                }
-            )
+            calls.append("download")
+            pd.DataFrame({"Id": [1, 2], "Text": ["a b c", "d e f"]}).to_csv(Path(path) / "r.csv", index=False)
 
-    kaggle_module = types.ModuleType("kaggle")
-    kaggle_api_module = types.ModuleType("kaggle.api")
-    kaggle_api_extended_module = types.ModuleType("kaggle.api.kaggle_api_extended")
-    kaggle_api_extended_module.KaggleApi = FakeKaggleApi
+    mod = types.ModuleType("kaggle.api.kaggle_api_extended")
+    mod.KaggleApi = FakeKaggleApi
+    for name, m in (("kaggle", types.ModuleType("kaggle")), ("kaggle.api", types.ModuleType("kaggle.api")),
+                    ("kaggle.api.kaggle_api_extended", mod)):
+        monkeypatch.setitem(sys.modules, name, m)
+    monkeypatch.setattr(dataset, "load_env", lambda required_keys: {})
 
-    monkeypatch.setitem(sys.modules, "kaggle", kaggle_module)
-    monkeypatch.setitem(sys.modules, "kaggle.api", kaggle_api_module)
-    monkeypatch.setitem(sys.modules, "kaggle.api.kaggle_api_extended", kaggle_api_extended_module)
-
-    return instances
-
-
-def test_dataset_downloader_init_with_valid_env(monkeypatch):
-    monkeypatch.setattr(
-        dataset,
-        "load_env",
-        lambda required_keys: {
-            "KAGGLE_USERNAME": "user",
-            "KAGGLE_KEY": "key",
-            "KAGGLE_DATASET": "owner/my-dataset",
-        },
-    )
-    instances = _install_fake_kaggle(monkeypatch)
-
-    downloader = dataset.DatasetDownloader()
-
-    assert downloader.dataset_name == "owner/my-dataset"
-    assert instances
-    assert downloader.api is instances[0]
-    assert instances[0].authenticated is True
+    dl = dataset.DatasetDownloader(data_dir=tmp_path, dataset_name="owner/ds")
+    assert calls == []
+    dl.download_data()
+    dl.download_data()
+    assert calls == ["auth", "download"]
+    assert dl.metadata()["dataset"] == "owner/ds"
+    assert len(dl.load_raw()) == 2 and dl.parquet_path.exists()
 
 
-def test_dataset_downloader_download_data_creates_dir_and_calls_api(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        dataset,
-        "load_env",
-        lambda required_keys: {
-            "KAGGLE_USERNAME": "user",
-            "KAGGLE_KEY": "key",
-            "KAGGLE_DATASET": "owner/my-dataset",
-        },
-    )
-    instances = _install_fake_kaggle(monkeypatch)
+def test_make_sample_filters_and_is_reproducible():
+    raw = pd.DataFrame({"Id": range(10), "Text": ["short", "a long enough text"] * 5, "Score": range(10)})
+    out = dataset.make_sample(raw, dataset.SampleConfig(sample_size=None, min_chars=10, dedupe=True))
+    assert list(out.columns) == ["Id", "Text", "Score"] and len(out) == 1
 
-    target_dir = tmp_path / "data"
-    downloader = dataset.DatasetDownloader(data_dir=target_dir, unzip=False)
+    cfg = dataset.SampleConfig(sample_size=3, min_chars=0, dedupe=False, seed=1)
+    assert dataset.make_sample(raw, cfg)["Id"].tolist() == dataset.make_sample(raw, cfg)["Id"].tolist()
+    only = dataset.make_sample(raw, dataset.SampleConfig(sample_size=None, min_chars=0, dedupe=False),
+                               allowed_ids=[2, 4])
+    assert sorted(only["Id"]) == [2, 4]
 
-    downloader.download_data()
 
-    assert target_dir.exists()
-    assert len(instances[0].download_calls) == 1
-    call = instances[0].download_calls[0]
-    assert call["dataset"] == "owner/my-dataset"
-    assert call["path"] == str(target_dir)
-    assert call["unzip"] is False
+def test_make_sample_rejects_invalid_id_columns():
+    import pytest
+
+    raw = pd.DataFrame({"Id": [1, 2, 2], "Code": ["a", "b", "c"], "Text": ["x y z"] * 3})
+    with pytest.raises(ValueError, match="interi"):
+        dataset.make_sample(raw, dataset.SampleConfig(id_col="Code", min_chars=0, dedupe=False))
+    with pytest.raises(ValueError, match="ripetuti"):
+        dataset.make_sample(raw, dataset.SampleConfig(id_col="Id", min_chars=0, dedupe=False))

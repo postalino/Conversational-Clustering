@@ -3,5 +3,7 @@
 /.venv
 /.venv_corrupt
 /data
+/logs
 /Schema.txt
-/src/__pycache__/*.*
+__pycache__/
+*.pyc
